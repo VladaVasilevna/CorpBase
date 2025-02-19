@@ -18,14 +18,12 @@ class DBQueries:
             cursor = conn.cursor()
             cursor.execute(query, params)  # Выполняем SQL-запрос
             if is_select:  # Если запрос - SELECT, получаем результаты
-                results = cursor.fetchall()
+                return cursor.fetchall()
             else:
-                conn.commit()  # Фиксируем изменения в базе данных только для не-SELECT запросов
-                results = []  # Иначе возвращаем пустой список
-            return results
+                conn.commit()  # Фиксируем изменения для не-SELECT запросов
+                return []  # Возвращаем пустой список для таких запросов
         except psycopg2.Error as e:
-            print(f"Ошибка выполнения запроса: {e}")
-            if conn:  # Проверяем, что соединение еще не закрыто
+            if conn:
                 conn.rollback()  # Откатываем транзакцию в случае ошибки
             return []
         finally:

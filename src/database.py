@@ -25,13 +25,19 @@ def create_database(queries_manager: DBQueries) -> None:
 def setup_employers_table(queries_manager: DBQueries) -> str:
     """Создает или пересоздает таблицу employers в базе данных."""
     try:
-        queries_manager.execute_query("DROP TABLE IF EXISTS employers CASCADE;")  # Удаляем таблицу, если она существует
+        queries_manager.execute_query("DROP TABLE IF EXISTS employers CASCADE;", is_select=False)
         queries_manager.execute_query(
-            "CREATE TABLE employers (employer varchar(100) PRIMARY KEY not null, open_vacancies varchar(100))"
+            """
+            CREATE TABLE IF NOT EXISTS employers (
+                employer varchar(100) PRIMARY KEY not null,
+                open_vacancies varchar(100)
+            )
+            """,
+            is_select=False,
         )
         return "Таблица 'employers' успешно создана/пересоздана."
     except Exception as e:
-        print(e)
+        print(f"Ошибка при создании таблицы employers: {e}")
         return "Ошибка при создании таблицы employers."
 
 
@@ -54,10 +60,10 @@ def populate_employers_table(employers_list: List[Dict[str, Optional[str]]], que
 def setup_vacancies_table(queries_manager: DBQueries) -> str:
     """Создает или пересоздает таблицу vacancies в базе данных."""
     try:
-        queries_manager.execute_query("DROP TABLE IF EXISTS vacancies;")  # Удаляем таблицу, если она существует
+        queries_manager.execute_query("DROP TABLE IF EXISTS vacancies;", is_select=False)
         queries_manager.execute_query(
             """
-            CREATE TABLE vacancies (
+            CREATE TABLE IF NOT EXISTS vacancies (
                 name_vacancy text not null,
                 employer varchar(100) not null,
                 location varchar(100) not null,
@@ -66,13 +72,14 @@ def setup_vacancies_table(queries_manager: DBQueries) -> str:
                 currency varchar(10) not null,
                 url text not null,
                 FOREIGN KEY (employer) REFERENCES employers(employer),
-                UNIQUE (name_vacancy, employer)  -- Добавляем уникальный индекс
+                UNIQUE (name_vacancy, employer)
             )
-            """
+            """,
+            is_select=False,
         )
         return "Таблица 'vacancies' успешно создана/пересоздана."
     except Exception as e:
-        print(e)
+        print(f"Ошибка при создании таблицы vacancies: {e}")
         return "Ошибка при создании таблицы vacancies."
 
 
@@ -81,7 +88,8 @@ def populate_vacancies_table(vacancies_list: List[Dict[str, dict]], queries_mana
     try:
         for vacancy in vacancies_list:
             name_vacancy = vacancy["name"]
-            employer = vacancy["employer"].get("name")
+            employer_name = vacancy["employer"].get("name")
+            employer_id = vacancy["employer"].get("id")  # Получаем ID работодателя
             location = vacancy["area"]["name"]
             salary_from = (
                 vacancy["salary"]["from"] if vacancy["salary"]["from"] is not None else 0
@@ -89,21 +97,42 @@ def populate_vacancies_table(vacancies_list: List[Dict[str, dict]], queries_mana
             salary_to = vacancy["salary"]["to"] if vacancy["salary"]["to"] is not None else 0
             currency = vacancy["salary"]["currency"]
             url_vacancy = vacancy["alternate_url"]
+
+            # Проверяем, существует ли работодатель в таблице 'employers'
+            check_employer_query = "SELECT employer FROM employers WHERE employer = %s"
+            employer_exists = queries_manager.execute_query(check_employer_query, (employer_name,))
+
+            if not employer_exists:
+                # Если работодателя нет, добавляем его
+                insert_employer_query = """
+                    INSERT INTO employers (employer, open_vacancies)
+                    VALUES (%s, %s)
+                    ON CONFLICT (employer) DO NOTHING
+                """
+                queries_manager.execute_query(insert_employer_query, (employer_name, "N/A"), is_select=False)
+
+            # Вставляем вакансию
             queries_manager.execute_query(
-                "INSERT INTO vacancies VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (name_vacancy, employer) DO NOTHING",  # Избегаем дубликатов
+                """
+                INSERT INTO vacancies (name_vacancy, employer, location, salary_from, salary_to, currency, url)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (name_vacancy, employer) DO NOTHING
+                """,
                 (
                     name_vacancy,
-                    employer,
+                    employer_name,
                     location,
                     salary_from,
                     salary_to,
                     currency,
                     url_vacancy,
                 ),
+                 is_select=False # Указываем, что это INSERT запрос
             )
+
         return "Вакансии успешно добавлены в таблицу 'vacancies'."
     except Exception as e:
-        print(e)
+        print(f"Ошибка при заполнении таблицы vacancies: {e}")
         return "Ошибка при заполнении таблицы vacancies."
 
 
