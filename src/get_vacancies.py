@@ -1,55 +1,70 @@
-from typing import Any
-
+from typing import Any, List, Dict
 import requests
 
+def fetch_vacancies_for_specific_employers(employer_ids: List[str]) -> List[Dict[str, Any]]:
+    """Получает список вакансий для указанных ID работодателей."""
+    all_vacancies = []
 
-def get_employers() -> list[dict[str, Any]]:
-    """Функция, получающая работодателей по API"""
-    url_1 = "https://api.hh.ru/employers"
-    params = {"only_with_vacancies": True}
+    for employer_id in employer_ids:
+        employer_vacancies = fetch_vacancies_by_employer_id(employer_id)
+        if employer_vacancies:
+            all_vacancies.extend(employer_vacancies)
+
+    return all_vacancies
+
+
+def fetch_vacancies_by_employer_id(employer_id: str) -> List[Dict[str, Any]]:
+    """Получает список вакансий для одного работодателя по его ID."""
+    url = "https://api.hh.ru/vacancies"
+    params = {"employer_id": employer_id}
     try:
-        employer_json = requests.get(url_1, params=params)
-        if employer_json.status_code == 200:
-            employers = employer_json.json().get("items")[:10]
-            return employers
-        else:
-            print(f"Ошибка: статус {employer_json.status_code}")
-            return []
-    except Exception as e:
-        print(e)
-        print("Ошибка в get_vacancies")
+        response = requests.get(url, params=params)
+        response.raise_for_status()  # Проверка на HTTP ошибки
+
+        vacancies_data = response.json()
+        employer_vacancies = vacancies_data.get("items", [])
+
+        valid_vacancies = [
+            vacancy_item for vacancy_item in employer_vacancies if is_valid_vacancy(vacancy_item)
+        ]
+        return valid_vacancies
+
+    except requests.exceptions.RequestException as e:
+        print(f"Ошибка при получении вакансий для работодателя с ID {employer_id}: {e}")
         return []
 
 
-def get_vacancies(employers: list) -> list:
-    """Функция, получающая вакансии у этих работодателей по API"""
-    try:
-        all_vacancies = []
-        if employers:
-            for employer in employers:
-                employer_id = employer.get("id")
-                params_1 = {"employer_id": employer_id}
-                url = "https://api.hh.ru/vacancies"
-                vacancies_json = requests.get(url, params=params_1)
-                vacancies = vacancies_json.json().get("items")
-                for vacancy in vacancies:
-                    if (
-                        vacancy.get("name") is not None
-                        and vacancy["area"].get("name") is not None
-                        and vacancy.get("salary") is not None
-                        and vacancy["salary"].get("currency") is not None
-                        and vacancy.get("alternate_url") is not None
-                        and vacancy["employer"].get("name") is not None
-                        and vacancy["salary"]["currency"] == "RUR"
-                    ):
-                        all_vacancies.append(vacancy)
-        return all_vacancies
-    except Exception as e:
-        print(e)
-        print("Ошибка в get_vacancies")
-        return []
+def is_valid_vacancy(vacancy_data: Dict[str, Any]) -> bool:
+    """Проверяет, содержит ли вакансия необходимую информацию и имеет ли валидную валюту."""
+    return (
+        vacancy_data.get("name") is not None
+        and vacancy_data["area"].get("name") is not None
+        and vacancy_data.get("salary") is not None
+        and vacancy_data["salary"].get("currency") is not None
+        and vacancy_data["salary"]["currency"] == "RUR"
+        and vacancy_data.get("alternate_url") is not None
+        and vacancy_data["employer"].get("name") is not None
+    )
 
+def fetch_employer_name(employer_id: str) -> str | None:
+    """Получает имя работодателя по его ID."""
+    url = f"https://api.hh.ru/employers/{employer_id}"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        employer_data = response.json()
+        return employer_data.get("name")
+    except requests.exceptions.RequestException as e:
+        print(f"Ошибка при получении данных о работодателе с ID {employer_id}: {e}")
+        return None
 
 if __name__ == "__main__":
-    for vac in get_vacancies(get_employers()):
-        print(vac)
+    # Список ID конкретных работодателей
+    specific_employer_ids = ["80", "1740", "2460946", "15478", "4233", "59", "1102601", "208707", "1373", "106571"]
+
+    all_fetched_vacancies = fetch_vacancies_for_specific_employers(specific_employer_ids)
+    if all_fetched_vacancies:
+        for fetched_vacancy in all_fetched_vacancies:
+            print(fetched_vacancy)
+    else:
+        print("Не удалось получить вакансии для указанных работодателей.")
