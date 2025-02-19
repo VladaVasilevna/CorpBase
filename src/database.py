@@ -2,9 +2,10 @@ from typing import Dict, List, Optional
 
 from dotenv import load_dotenv
 
-from src.get_vacancies import fetch_vacancies_for_specific_employers, fetch_employer_name
 from src.db_connection import DBConnection
 from src.db_queries import DBQueries
+from src.get_vacancies import (fetch_employer_name,
+                               fetch_vacancies_for_specific_employers)
 
 
 def create_database(queries_manager: DBQueries) -> None:
@@ -25,7 +26,9 @@ def create_database(queries_manager: DBQueries) -> None:
 def setup_employers_table(queries_manager: DBQueries) -> str:
     """Создает или пересоздает таблицу employers в базе данных."""
     try:
-        queries_manager.execute_query("DROP TABLE IF EXISTS employers CASCADE;", is_select=False)
+        queries_manager.execute_query(
+            "DROP TABLE IF EXISTS employers CASCADE;", is_select=False
+        )
         queries_manager.execute_query(
             """
             CREATE TABLE IF NOT EXISTS employers (
@@ -41,7 +44,9 @@ def setup_employers_table(queries_manager: DBQueries) -> str:
         return "Ошибка при создании таблицы employers."
 
 
-def populate_employers_table(employers_list: List[Dict[str, Optional[str]]], queries_manager: DBQueries) -> str:
+def populate_employers_table(
+    employers_list: List[Dict[str, Optional[str]]], queries_manager: DBQueries
+) -> str:
     """Заполняет таблицу employers данными."""
     try:
         for employer in employers_list:
@@ -60,7 +65,9 @@ def populate_employers_table(employers_list: List[Dict[str, Optional[str]]], que
 def setup_vacancies_table(queries_manager: DBQueries) -> str:
     """Создает или пересоздает таблицу vacancies в базе данных."""
     try:
-        queries_manager.execute_query("DROP TABLE IF EXISTS vacancies;", is_select=False)
+        queries_manager.execute_query(
+            "DROP TABLE IF EXISTS vacancies;", is_select=False
+        )
         queries_manager.execute_query(
             """
             CREATE TABLE IF NOT EXISTS vacancies (
@@ -83,7 +90,9 @@ def setup_vacancies_table(queries_manager: DBQueries) -> str:
         return "Ошибка при создании таблицы vacancies."
 
 
-def populate_vacancies_table(vacancies_list: List[Dict[str, dict]], queries_manager: DBQueries) -> str | None:
+def populate_vacancies_table(
+    vacancies_list: List[Dict[str, dict]], queries_manager: DBQueries
+) -> str | None:
     """Заполняет таблицу vacancies данными."""
     try:
         for vacancy in vacancies_list:
@@ -92,15 +101,21 @@ def populate_vacancies_table(vacancies_list: List[Dict[str, dict]], queries_mana
             employer_id = vacancy["employer"].get("id")  # Получаем ID работодателя
             location = vacancy["area"]["name"]
             salary_from = (
-                vacancy["salary"]["from"] if vacancy["salary"]["from"] is not None else 0
+                vacancy["salary"]["from"]
+                if vacancy["salary"]["from"] is not None
+                else 0
             )
-            salary_to = vacancy["salary"]["to"] if vacancy["salary"]["to"] is not None else 0
+            salary_to = (
+                vacancy["salary"]["to"] if vacancy["salary"]["to"] is not None else 0
+            )
             currency = vacancy["salary"]["currency"]
             url_vacancy = vacancy["alternate_url"]
 
             # Проверяем, существует ли работодатель в таблице 'employers'
             check_employer_query = "SELECT employer FROM employers WHERE employer = %s"
-            employer_exists = queries_manager.execute_query(check_employer_query, (employer_name,))
+            employer_exists = queries_manager.execute_query(
+                check_employer_query, (employer_name,)
+            )
 
             if not employer_exists:
                 # Если работодателя нет, добавляем его
@@ -109,7 +124,9 @@ def populate_vacancies_table(vacancies_list: List[Dict[str, dict]], queries_mana
                     VALUES (%s, %s)
                     ON CONFLICT (employer) DO NOTHING
                 """
-                queries_manager.execute_query(insert_employer_query, (employer_name, "N/A"), is_select=False)
+                queries_manager.execute_query(
+                    insert_employer_query, (employer_name, "N/A"), is_select=False
+                )
 
             # Вставляем вакансию
             queries_manager.execute_query(
@@ -127,7 +144,7 @@ def populate_vacancies_table(vacancies_list: List[Dict[str, dict]], queries_mana
                     currency,
                     url_vacancy,
                 ),
-                 is_select=False # Указываем, что это INSERT запрос
+                is_select=False,  # Указываем, что это INSERT запрос
             )
 
         return "Вакансии успешно добавлены в таблицу 'vacancies'."
@@ -146,13 +163,26 @@ if __name__ == "__main__":
 
     print(setup_employers_table(local_queries_manager))
     # Список ID конкретных работодателей
-    specific_employer_ids = ["80", "1740", "2460946", "15478", "4233", "59", "1102601", "208707", "1373", "106571"]
+    specific_employer_ids = [
+        "80",
+        "1740",
+        "2460946",
+        "15478",
+        "4233",
+        "59",
+        "1102601",
+        "208707",
+        "1373",
+        "106571",
+    ]
     #  Получаем данные о работодателях по их ID
     employers_data = []
     for employer_id in specific_employer_ids:
         employer_name = fetch_employer_name(employer_id)
         if employer_name:
-            employers_data.append({"name": employer_name, "open_vacancies": "N/A"})  #  "N/A" или другое значение
+            employers_data.append(
+                {"name": employer_name, "open_vacancies": "N/A"}
+            )  #  "N/A" или другое значение
         else:
             print(f"Не удалось получить имя для работодателя с ID {employer_id}")
     print(populate_employers_table(employers_data, local_queries_manager))

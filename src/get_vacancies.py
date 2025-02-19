@@ -1,7 +1,11 @@
-from typing import Any, List, Dict
+from typing import Any, Dict, List
+
 import requests
 
-def fetch_vacancies_for_specific_employers(employer_ids: List[str]) -> List[Dict[str, Any]]:
+
+def fetch_vacancies_for_specific_employers(
+    employer_ids: List[str],
+) -> List[Dict[str, Any]]:
     """Получает список вакансий для указанных ID работодателей."""
     all_vacancies = []
 
@@ -25,7 +29,9 @@ def fetch_vacancies_by_employer_id(employer_id: str) -> List[Dict[str, Any]]:
         employer_vacancies = vacancies_data.get("items", [])
 
         valid_vacancies = [
-            vacancy_item for vacancy_item in employer_vacancies if is_valid_vacancy(vacancy_item)
+            vacancy_item
+            for vacancy_item in employer_vacancies
+            if is_valid_vacancy(vacancy_item)
         ]
         return valid_vacancies
 
@@ -46,6 +52,7 @@ def is_valid_vacancy(vacancy_data: Dict[str, Any]) -> bool:
         and vacancy_data["employer"].get("name") is not None
     )
 
+
 def fetch_employer_name(employer_id: str) -> str | None:
     """Получает имя работодателя по его ID."""
     url = f"https://api.hh.ru/employers/{employer_id}"
@@ -58,11 +65,25 @@ def fetch_employer_name(employer_id: str) -> str | None:
         print(f"Ошибка при получении данных о работодателе с ID {employer_id}: {e}")
         return None
 
+
 if __name__ == "__main__":
     # Список ID конкретных работодателей
-    specific_employer_ids = ["80", "1740", "2460946", "15478", "4233", "59", "1102601", "208707", "1373", "106571"]
+    specific_employer_ids = [
+        "80",
+        "1740",
+        "2460946",
+        "15478",
+        "4233",
+        "59",
+        "1102601",
+        "208707",
+        "1373",
+        "106571",
+    ]
 
-    all_fetched_vacancies = fetch_vacancies_for_specific_employers(specific_employer_ids)
+    all_fetched_vacancies = fetch_vacancies_for_specific_employers(
+        specific_employer_ids
+    )
     if all_fetched_vacancies:
         for fetched_vacancy in all_fetched_vacancies:
             print(fetched_vacancy)

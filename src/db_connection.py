@@ -1,5 +1,7 @@
 import os
+
 import psycopg2
+
 
 class DBConnection:
     """Управляет подключением к базе данных PostgreSQL."""

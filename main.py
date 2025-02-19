@@ -1,16 +1,13 @@
 from dotenv import load_dotenv
 
-from src.get_vacancies import fetch_vacancies_for_specific_employers, fetch_employer_name
-from src.database import (
-    create_database,
-    setup_employers_table,
-    populate_employers_table,
-    setup_vacancies_table,
-    populate_vacancies_table,
-)
 from src.companies_and_vacancies import DBManager
+from src.database import (create_database, populate_employers_table,
+                          populate_vacancies_table, setup_employers_table,
+                          setup_vacancies_table)
 from src.db_connection import DBConnection
 from src.db_queries import DBQueries
+from src.get_vacancies import (fetch_employer_name,
+                               fetch_vacancies_for_specific_employers)
 
 
 def main():
@@ -27,7 +24,18 @@ def main():
     print(setup_employers_table(db_queries))
 
     # Список ID конкретных работодателей
-    specific_employer_ids = ["80", "1740", "2460946", "15478", "4233", "59", "1102601", "208707", "1373", "106571"]
+    specific_employer_ids = [
+        "80",
+        "1740",
+        "2460946",
+        "15478",
+        "4233",
+        "59",
+        "1102601",
+        "208707",
+        "1373",
+        "106571",
+    ]
 
     # Получаем данные о работодателях по их ID
     employers_data = []
